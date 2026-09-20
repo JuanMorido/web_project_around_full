@@ -1,12 +1,32 @@
+# Dependencies
 node_modules/
+client/node_modules/
+server/node_modules/
+
+# Build output
 dist/
+client/dist/
 build/
+
+# Local env files
 .env
 .env.*
 !.env.example
+.env.local
+.env.*.local
+
+# Logs and coverage
 *.log
-.DS_Store
-.vscode/
-.idea/
 coverage/
 *.tsbuildinfo
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vite
+*.local
