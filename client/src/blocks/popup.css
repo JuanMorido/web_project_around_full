@@ -141,6 +141,31 @@
   min-height: auto;
 }
 
+.popup__content_type_tooltip {
+  min-height: 330px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 36px;
+  text-align: center;
+}
+
+.popup__tooltip-icon {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+}
+
+.popup__tooltip-message {
+  margin: 32px 0 0;
+  max-width: 330px;
+  color: #000;
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 29px;
+}
+
 @media screen and (max-width: 544px) {
   .popup {
     bottom: 112px;
@@ -179,5 +204,21 @@
   .popup__content_content_image {
     max-width: 75vw;
     padding: 0;
+  }
+
+  .popup__content_type_tooltip {
+    min-height: 282px;
+    padding: 50px 18px;
+  }
+
+  .popup__tooltip-icon {
+    width: 80px;
+    height: 80px;
+  }
+
+  .popup__tooltip-message {
+    font-size: 20px;
+    line-height: 24px;
+    margin-top: 24px;
   }
 }

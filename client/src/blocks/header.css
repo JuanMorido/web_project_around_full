@@ -3,6 +3,7 @@
   font-family: "Inter", Arial, sans-serif;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   border-bottom: 1px solid rgba(84, 84, 84, 0.7);
 }
 
@@ -10,6 +11,79 @@
   width: 173px;
   height: 33px;
   object-fit: contain;
+}
+
+.header__nav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.header__email {
+  margin: 0;
+  color: #fff;
+  font-size: 18px;
+  line-height: 22px;
+}
+
+.header__logout {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #a9a9a9;
+  font-family: inherit;
+  font-size: 18px;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+.header__logout:hover {
+  opacity: 0.6;
+}
+
+.header__link {
+  color: #fff;
+  font-size: 18px;
+  line-height: 22px;
+  text-decoration: none;
+}
+
+.header__link:hover {
+  opacity: 0.6;
+}
+
+.header__burger {
+  display: none;
+  width: 24px;
+  height: 21px;
+  padding: 0;
+  border: none;
+  background:
+    linear-gradient(#fff, #fff) 0 0 / 100% 3px no-repeat,
+    linear-gradient(#fff, #fff) 0 9px / 100% 3px no-repeat,
+    linear-gradient(#fff, #fff) 0 18px / 100% 3px no-repeat;
+  cursor: pointer;
+}
+
+.header__burger_open {
+  width: 22px;
+  height: 22px;
+  background:
+    linear-gradient(#fff, #fff) center / 100% 3px no-repeat;
+  transform: rotate(45deg);
+}
+
+.header__burger_open::after {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 3px;
+  background: #fff;
+  transform: rotate(90deg);
+}
+
+.header__mobile-menu {
+  display: none;
 }
 
 @media screen and (max-width: 544px) {
@@ -21,5 +95,33 @@
     width: 126px;
     height: 24px;
     margin: 0 0 0 7px;
+  }
+
+  .header__nav {
+    display: none;
+  }
+
+  .header__burger {
+    display: block;
+  }
+
+  .header__link {
+    font-size: 14px;
+    line-height: 17px;
+  }
+
+  .header__mobile-menu_open {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    padding: 40px 0 32px;
+    border-bottom: 1px solid rgba(84, 84, 84, 0.7);
+  }
+
+  .header__mobile-menu .header__email,
+  .header__mobile-menu .header__logout {
+    font-size: 18px;
+    line-height: 22px;
   }
 }
