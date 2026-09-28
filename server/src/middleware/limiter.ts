@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import { rateLimit } from "express-rate-limit";
 
 const tooManyRequests = {
   message: "Demasiadas solicitudes, inténtalo más tarde",
