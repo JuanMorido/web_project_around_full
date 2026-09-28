@@ -8,7 +8,7 @@ import Register from './Register/Register';
 import ProtectedRoute from './ProtectedRoute/ProtectedRoute';
 import InfoTooltip from './InfoTooltip/InfoTooltip';
 import api from '../utils/api';
-import { authorize, checkToken, register } from '../utils/auth';
+import { authorize, register } from '../utils/auth';
 import CurrentUserContext from '../contexts/CurrentUserContext';
 import type { CardData, CardFormData } from '../interfaces/CardData';
 import type { ModalData } from '../interfaces/ModalData';
@@ -24,7 +24,6 @@ export default function App(): React.JSX.Element {
   const [cards, setCards] = useState<CardData[]>([]);
   const [popup, setPopup] = useState<ModalData | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
   const [isCheckingToken, setIsCheckingToken] = useState(
     () => Boolean(localStorage.getItem('jwt')),
   );
@@ -38,15 +37,16 @@ export default function App(): React.JSX.Element {
       return;
     }
 
-    checkToken(token)
-      .then((data) => {
+    api
+      .getUserInfo()
+      .then((userData) => {
+        setCurrentUser(userData);
         setIsLoggedIn(true);
-        setUserEmail(data.data.email);
       })
       .catch(() => {
         localStorage.removeItem('jwt');
         setIsLoggedIn(false);
-        setUserEmail('');
+        setCurrentUser(null);
       })
       .finally(() => {
         setIsCheckingToken(false);
@@ -60,11 +60,7 @@ export default function App(): React.JSX.Element {
 
     (async () => {
       try {
-        const [userData, initialCards] = await Promise.all([
-          api.getUserInfo(),
-          api.getInitialCards(),
-        ]);
-        setCurrentUser(userData);
+        const initialCards = await api.getInitialCards();
         setCards(initialCards);
       } catch (error) {
         console.error(error);
@@ -102,8 +98,14 @@ export default function App(): React.JSX.Element {
     authorize(email, password)
       .then((data) => {
         localStorage.setItem('jwt', data.token);
+        setCurrentUser({
+          _id: data._id,
+          email: data.email,
+          name: data.name,
+          about: data.about,
+          avatar: data.avatar,
+        });
         setIsLoggedIn(true);
-        setUserEmail(email);
         navigate('/');
       })
       .catch((error) => {
@@ -116,7 +118,6 @@ export default function App(): React.JSX.Element {
   function handleSignOut(): void {
     localStorage.removeItem('jwt');
     setIsLoggedIn(false);
-    setUserEmail('');
     setCurrentUser(null);
     setCards([]);
     setPopup(null);
@@ -188,7 +189,7 @@ export default function App(): React.JSX.Element {
         <Header
           isLoggedIn={isLoggedIn}
           isCheckingToken={isCheckingToken}
-          userEmail={userEmail}
+          userEmail={currentUser?.email ?? ''}
           onSignOut={handleSignOut}
         />
         <Routes>

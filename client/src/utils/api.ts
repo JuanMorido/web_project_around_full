@@ -15,30 +15,40 @@ class Api {
     this._headers = headers;
   }
 
+  private _getHeaders(): Record<string, string> {
+    const token = localStorage.getItem('jwt');
+    return {
+      ...this._headers,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  }
+
   private async _request<T>(url: string, options?: RequestInit): Promise<T> {
-    const res = await fetch(url, options);
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        ...this._getHeaders(),
+        ...options?.headers,
+      },
+    });
     if (res.ok) {
       return (await res.json()) as T;
     }
-    throw new Error(`Error: ${res.status}`);
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.message || `Error: ${res.status}`);
   }
 
   async getUserInfo(): Promise<UserData> {
-    return await this._request<UserData>(`${this._baseUrl}/users/me`, {
-      headers: this._headers,
-    });
+    return await this._request<UserData>(`${this._baseUrl}/users/me`);
   }
 
   async getInitialCards(): Promise<CardData[]> {
-    return await this._request<CardData[]>(`${this._baseUrl}/cards/`, {
-      headers: this._headers,
-    });
+    return await this._request<CardData[]>(`${this._baseUrl}/cards/`);
   }
 
   async updateUserInfo(data: ProfileFormData): Promise<UserData> {
     return await this._request<UserData>(`${this._baseUrl}/users/me`, {
       method: 'PATCH',
-      headers: this._headers,
       body: JSON.stringify(data),
     });
   }
@@ -46,7 +56,6 @@ class Api {
   async updateAvatar(data: AvatarFormData): Promise<UserData> {
     return await this._request<UserData>(`${this._baseUrl}/users/me/avatar`, {
       method: 'PATCH',
-      headers: this._headers,
       body: JSON.stringify(data),
     });
   }
@@ -54,38 +63,31 @@ class Api {
   async addCard(data: CardFormData): Promise<CardData> {
     return await this._request<CardData>(`${this._baseUrl}/cards/`, {
       method: 'POST',
-      headers: this._headers,
       body: JSON.stringify(data),
     });
   }
 
-  async deleteCard(id: string): Promise<{ message: string }> {
-    return await this._request<{ message: string }>(
-      `${this._baseUrl}/cards/${id}`,
-      {
-        method: 'DELETE',
-        headers: this._headers,
-      },
-    );
+  async deleteCard(id: string): Promise<CardData> {
+    return await this._request<CardData>(`${this._baseUrl}/cards/${id}`, {
+      method: 'DELETE',
+    });
   }
 
   async addLike(id: string): Promise<CardData> {
     return await this._request<CardData>(`${this._baseUrl}/cards/${id}/likes`, {
       method: 'PUT',
-      headers: this._headers,
     });
   }
 
   async removeLike(id: string): Promise<CardData> {
     return await this._request<CardData>(`${this._baseUrl}/cards/${id}/likes`, {
       method: 'DELETE',
-      headers: this._headers,
     });
   }
 }
 
 const api = new Api({
-  baseUrl: 'http://localhost:3001',
+  baseUrl: import.meta.env.VITE_API_URL ?? 'http://localhost:3001',
   headers: {
     'Content-Type': 'application/json',
   },

@@ -10,6 +10,9 @@ dist
 # Optional npm cache directory
 .npm
 
+# Environment
+.env
+
 # System files and IDE settings folders
 .DS_Store
 .idea
