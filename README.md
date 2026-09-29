@@ -59,4 +59,6 @@ npm run dev:client   # http://localhost:3000
 
 ## Despliegue
 
-Las direcciones públicas se añadirán aquí cuando el front y la API estén en Vercel.
+- Front end: https://web-project-around-full-client.vercel.app
+- API: https://web-project-around-full.vercel.app
+- Estado de la API: https://web-project-around-full.vercel.app/health
