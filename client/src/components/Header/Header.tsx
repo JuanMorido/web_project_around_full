@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import logo from '../../images/logo.svg';
+import { publicUrl } from '../../utils/publicUrl';
 
 type HeaderProps = {
   isLoggedIn: boolean;
@@ -54,8 +54,8 @@ export default function Header({
         }`}
       >
         <img
-          src={logo}
-          alt='Around the U.S. logo'
+          src={publicUrl('logo-viabilidad.svg')}
+          alt='Mundínamo'
           className='logo header__logo'
         />
         {isCheckingToken ? null : isLoggedIn ? (

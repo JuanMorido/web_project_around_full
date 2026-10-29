@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" role="img" aria-label="Mundínamo">
+  <circle cx="16" cy="16" r="15" fill="#1f6a42"/>
+  <g stroke="#f3f7f4" stroke-width="1.15">
+    <circle cx="16" cy="16" r="11.25"/>
+    <ellipse cx="16" cy="16" rx="11.25" ry="4.35"/>
+    <path d="M16 4.75c2.55 2.7 4.15 6.7 4.15 11.25S18.55 24.55 16 27.25c-2.55-2.7-4.15-6.7-4.15-11.25S13.45 7.45 16 4.75z"/>
+  </g>
+  <path fill="#f4d35e" d="M18.15 4.4 12.35 15.15h3.85L12.05 27.7 22.15 13.85h-4.05L21.85 4.4z"/>
+</svg>

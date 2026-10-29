@@ -2,57 +2,78 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 type LoginProps = {
-  onLogin: (email: string, password: string) => void;
+  onLogin: (username: string, password: string) => void;
+  notice?: string | null;
 };
 
-export default function Login({ onLogin }: LoginProps): React.JSX.Element {
-  const [email, setEmail] = useState('');
+const fieldClass =
+  'h-10 w-full rounded-lg border border-border bg-white px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50';
+
+export default function Login({
+  onLogin,
+  notice,
+}: LoginProps): React.JSX.Element {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    onLogin(email, password);
+    onLogin(username, password);
   }
 
   return (
-    <section className='auth'>
-      <h2 className='auth__title'>Inicia sesión</h2>
-      <form className='auth__form' name='login-form' onSubmit={handleSubmit}>
-        <label className='auth__field'>
-          <input
-            className='auth__input'
-            id='login-email'
-            name='email'
-            placeholder='Correo electrónico'
-            required
-            type='email'
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-        </label>
-        <label className='auth__field'>
-          <input
-            className='auth__input'
-            id='login-password'
-            minLength={8}
-            name='password'
-            placeholder='Contraseña'
-            required
-            type='password'
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </label>
-        <button className='auth__button' type='submit'>
-          Inicia sesión
-        </button>
-      </form>
-      <p className='auth__caption'>
+    <form
+      autoComplete="off"
+      className="mt-6 grid gap-4"
+      name="login-form"
+      onSubmit={handleSubmit}
+    >
+      {notice ? (
+        <p className="rounded-lg border border-border bg-muted px-3 py-2 text-sm">
+          {notice}
+        </p>
+      ) : null}
+      <label className="grid gap-1.5 text-sm font-medium">
+        Usuario
+        <input
+          autoComplete="off"
+          className={fieldClass}
+          id="login-username"
+          name="login-user"
+          required
+          type="text"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+        />
+      </label>
+      <label className="grid gap-1.5 text-sm font-medium">
+        Contraseña
+        <input
+          className={fieldClass}
+          id="login-password"
+          name="password"
+          placeholder="Contraseña"
+          required
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+      </label>
+      <button
+        className="h-10 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/80"
+        type="submit"
+      >
+        Inicia sesión
+      </button>
+      <p className="text-center text-sm text-muted-foreground">
         ¿Aún no eres miembro?{' '}
-        <Link className='auth__link' to='/signup'>
+        <Link
+          className="font-medium text-foreground underline-offset-4 hover:underline"
+          to="/signup"
+        >
           Regístrate aquí
         </Link>
       </p>
-    </section>
+    </form>
   );
 }
