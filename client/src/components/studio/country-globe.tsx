@@ -20,8 +20,9 @@ type CountryGlobeProps = {
   paused?: boolean;
   countryName?: string;
   selectedCode?: string;
+  availableCodes?: string[];
   focusRequest?: string;
-  onSelect?: (country: CountryIdentity) => void;
+  onSelect?: (country: CountryIdentity & { lat: number; lng: number }) => void;
 };
 
 type LoadedCountries = {
@@ -32,6 +33,7 @@ type LoadedCountries = {
 
 const SELECTED = "rgba(36, 112, 72, 0.62)";
 const HOVER = "rgba(36, 112, 72, 0.34)";
+const AVAILABLE = "rgba(36, 112, 72, 0.28)";
 const IDLE = "rgba(255, 255, 255, 0.06)";
 const SELECTED_SIDE = "rgba(24, 86, 54, 0.45)";
 const IDLE_SIDE = "rgba(255, 255, 255, 0.02)";
@@ -40,6 +42,61 @@ function detectWebgl(): boolean {
   if (typeof document === "undefined") return false;
   const canvas = document.createElement("canvas");
   return Boolean(canvas.getContext("webgl2") || canvas.getContext("webgl"));
+}
+
+function mulberry32(seed: number): () => number {
+  let state = seed;
+  return () => {
+    state |= 0;
+    state = (state + 0x6d2b79f5) | 0;
+    let value = Math.imul(state ^ (state >>> 15), 1 | state);
+    value = (value + Math.imul(value ^ (value >>> 7), 61 | value)) ^ value;
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function paintCosmos(): string {
+  if (typeof document === "undefined") return "";
+  const size = 768;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+  const random = mulberry32(0x0c05a05);
+  const center = size / 2;
+
+  const sky = ctx.createRadialGradient(center, center * 0.86, size * 0.08, center, center, size * 0.72);
+  sky.addColorStop(0, "#1a2744");
+  sky.addColorStop(0.42, "#0c1428");
+  sky.addColorStop(1, "#05070f");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, size, size);
+
+  for (let index = 0; index < 380; index += 1) {
+    const x = random() * size;
+    const y = random() * size;
+    const brightness = random();
+    const radius = brightness > 0.97 ? 1.7 : brightness > 0.88 ? 1.05 : 0.55;
+    const alpha = 0.45 + random() * 0.55;
+    const warm = random() > 0.84;
+    ctx.fillStyle = warm ? `rgba(255, 228, 196, ${alpha})` : `rgba(248, 250, 255, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    if (radius > 1.4) {
+      ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.55})`;
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(x - 5, y);
+      ctx.lineTo(x + 5, y);
+      ctx.moveTo(x, y - 5);
+      ctx.lineTo(x, y + 5);
+      ctx.stroke();
+    }
+  }
+
+  return canvas.toDataURL("image/jpeg", 0.86);
 }
 
 function loadCountries(): LoadedCountries {
@@ -70,6 +127,7 @@ export function CountryGlobe({
   paused = false,
   countryName = "",
   selectedCode = "",
+  availableCodes = [],
   focusRequest = "",
   onSelect,
 }: CountryGlobeProps) {
@@ -81,7 +139,16 @@ export function CountryGlobe({
     onSelectRef.current = onSelect ?? (() => {});
   }, [onSelect]);
   const loaded = useMemo(() => loadCountries(), []);
+  const available = useMemo(
+    () => new Set(availableCodes.map((code) => code.toUpperCase())),
+    [availableCodes],
+  );
+  const offered = useMemo(
+    () => loaded.polygons.filter((polygon) => available.has(polygon.properties.code)),
+    [available, loaded.polygons],
+  );
   const [webgl] = useState(detectWebgl);
+  const [cosmos] = useState(paintCosmos);
   const [hoverCode, setHoverCode] = useState<string | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [globeReady, setGlobeReady] = useState(false);
@@ -119,10 +186,13 @@ export function CountryGlobe({
           ? "Arrastra para girar. Clic para elegir el país."
           : "Cargando el mapa de países…";
 
+  const canChoose = (code: string) => !paused && available.has(code);
+
   const tone = (code: string) => {
+    if (!canChoose(code)) return "idle" as const;
     if (code === selectedCode) return "selected" as const;
     if (code === hoverCode) return "hover" as const;
-    return "idle" as const;
+    return "available" as const;
   };
 
   let stage: ReactNode;
@@ -149,10 +219,17 @@ export function CountryGlobe({
           onChange={(event) => {
             const polygon = loaded.polygons.find((item) => item.properties.code === event.target.value);
             if (!polygon) return;
-            onSelectRef.current({ code: polygon.properties.code, name: polygon.properties.name });
+            const place = loaded.places.get(polygon.properties.code);
+            if (!place) return;
+            onSelectRef.current({
+              code: polygon.properties.code,
+              name: polygon.properties.name,
+              lat: place.lat,
+              lng: place.lng,
+            });
           }}
         >
-          {loaded.polygons.map((polygon) => (
+          {offered.map((polygon) => (
             <option
               key={`${polygon.properties.code}-${String(polygon.id ?? polygon.properties.english)}`}
               value={polygon.properties.code}
@@ -185,6 +262,7 @@ export function CountryGlobe({
           const state = tone((polygon as CountryPolygon).properties.code);
           if (state === "selected") return SELECTED;
           if (state === "hover") return HOVER;
+          if (state === "available") return AVAILABLE;
           return IDLE;
         }}
         polygonSideColor={(polygon) =>
@@ -203,15 +281,26 @@ export function CountryGlobe({
           return 0.002;
         }}
         polygonsTransitionDuration={180}
-        polygonLabel={(polygon) => (paused ? "" : (polygon as CountryPolygon).properties.name)}
+        polygonLabel={(polygon) => {
+          const country = polygon as CountryPolygon;
+          return canChoose(country.properties.code) ? country.properties.name : "";
+        }}
         onPolygonHover={(polygon) => {
           if (paused) return;
-          setHoverCode(polygon ? (polygon as CountryPolygon).properties.code : null);
+          const code = polygon ? (polygon as CountryPolygon).properties.code : null;
+          setHoverCode(code && canChoose(code) ? code : null);
         }}
         onPolygonClick={(polygon) => {
-          if (paused) return;
           const country = polygon as CountryPolygon;
-          onSelectRef.current({ code: country.properties.code, name: country.properties.name });
+          if (!canChoose(country.properties.code)) return;
+          const place = loaded.places.get(country.properties.code);
+          if (!place) return;
+          onSelectRef.current({
+            code: country.properties.code,
+            name: country.properties.name,
+            lat: place.lat,
+            lng: place.lng,
+          });
         }}
         onGlobeReady={() => {
           const controls = globeRef.current?.controls();
@@ -247,7 +336,8 @@ export function CountryGlobe({
     <div className="grid h-[min(52vh,420px)] grid-rows-[minmax(0,1fr)_auto] md:h-full md:min-h-0">
       <div
         ref={stageRef}
-        className={`min-h-0 overflow-hidden ${paused ? "pointer-events-none grayscale" : "touch-none"}`}
+        className={`min-h-0 overflow-hidden bg-[#05070f] bg-cover bg-center ${paused ? "pointer-events-none grayscale" : "touch-none"}`}
+        style={cosmos ? { backgroundImage: `url("${cosmos}")` } : undefined}
       >
         {stage}
       </div>

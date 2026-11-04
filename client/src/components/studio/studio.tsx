@@ -5,9 +5,9 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "cn";
+import CountrySources from "@/components/studio/country-sources";
 import SiteFooter from "@/components/site/SiteFooter";
-import RequestStatus from "@/components/status/RequestStatus";
-import { getProjects, type Project } from "@/utils/projectsApi";
+import { getCatalog, type Country } from "@/utils/projectsApi";
 import { publicUrl } from "@/utils/publicUrl";
 
 const CountryGlobe = dynamic(() => import("./country-globe").then((module) => module.CountryGlobe), {
@@ -129,38 +129,257 @@ function SummaryBox({ title, rows }: { title: string; rows: { label: string; val
 }
 
 const EMPTY = "—";
+const fieldClass =
+  "h-10 w-full rounded-lg border border-border bg-white px-3 text-sm font-normal outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
-type ProjectListStatus = "loading" | "error" | "empty" | "ready";
+type ProjectDraft = {
+  nombre: string;
+  paisId: string;
+  tecnologia: string;
+  estado: string;
+  nivel: string;
+  demanda: string;
+  capex: string;
+  precioMwh: string;
+};
 
-function projectListStatus(
-  projects: Project[] | null,
-  failed: boolean,
-): ProjectListStatus {
-  if (failed) return "error";
-  if (projects === null) return "loading";
-  if (projects.length === 0) return "empty";
-  return "ready";
+type TechnologyDraft = {
+  nombre: string;
+  queEs: string;
+  queMandaElCosto: string;
+  seComercializa: string;
+  combustible: string;
+};
+
+function ToolDialog({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-40 grid place-items-center bg-black/40 px-4 py-6" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="max-h-[calc(100dvh-3rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-white p-6 shadow-lg"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="grid gap-1.5 text-sm font-medium">
+      {label}
+      {children}
+    </label>
+  );
+}
+
+function ProjectDialog({
+  countries,
+  initialCountryId,
+  onClose,
+  onSave,
+}: {
+  countries: Country[];
+  initialCountryId: string;
+  onClose: () => void;
+  onSave: (draft: ProjectDraft) => void;
+}) {
+  const [draft, setDraft] = useState<ProjectDraft>({
+    nombre: "",
+    paisId: initialCountryId,
+    tecnologia: "",
+    estado: "Por diseñar",
+    nivel: "Orden de magnitud",
+    demanda: "",
+    capex: "",
+    precioMwh: "",
+  });
+
+  function update(key: keyof ProjectDraft, value: string): void {
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  return (
+    <ToolDialog title="Proyecto" onClose={onClose}>
+      <form
+        className="mt-5 grid gap-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSave(draft);
+        }}
+      >
+        <Field label="Nombre">
+          <input className={fieldClass} required value={draft.nombre} onChange={(event) => update("nombre", event.target.value)} />
+        </Field>
+        <Field label="País">
+          <select className={fieldClass} required value={draft.paisId} onChange={(event) => update("paisId", event.target.value)}>
+            <option value="">Elige un país</option>
+            {countries.map((country) => (
+              <option key={country.id} value={country.id}>
+                {country.nombre}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Tecnología">
+          <input className={fieldClass} required value={draft.tecnologia} onChange={(event) => update("tecnologia", event.target.value)} />
+        </Field>
+        <Field label="Estado de la planta">
+          <select className={fieldClass} value={draft.estado} onChange={(event) => update("estado", event.target.value)}>
+            <option>Por diseñar</option>
+            <option>Ya construida</option>
+          </select>
+        </Field>
+        <Field label="Nivel de estimación">
+          <select className={fieldClass} value={draft.nivel} onChange={(event) => update("nivel", event.target.value)}>
+            <option>Orden de magnitud</option>
+            <option>Estudio más avanzado</option>
+          </select>
+        </Field>
+        <Field label="Demanda">
+          <input className={fieldClass} required value={draft.demanda} onChange={(event) => update("demanda", event.target.value)} />
+        </Field>
+        <Field label="CAPEX">
+          <input className={fieldClass} required value={draft.capex} onChange={(event) => update("capex", event.target.value)} />
+        </Field>
+        <Field label="Precio por MWh">
+          <input className={fieldClass} required value={draft.precioMwh} onChange={(event) => update("precioMwh", event.target.value)} />
+        </Field>
+        <div className="mt-2 flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit">Guardar</Button>
+        </div>
+      </form>
+    </ToolDialog>
+  );
+}
+
+function TechnologyDialog({
+  onClose,
+  onSave,
+}: {
+  onClose: () => void;
+  onSave: (draft: TechnologyDraft) => void;
+}) {
+  const [draft, setDraft] = useState<TechnologyDraft>({
+    nombre: "",
+    queEs: "",
+    queMandaElCosto: "",
+    seComercializa: "Sí",
+    combustible: "",
+  });
+
+  function update(key: keyof TechnologyDraft, value: string): void {
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  return (
+    <ToolDialog title="Tecnología" onClose={onClose}>
+      <form
+        className="mt-5 grid gap-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSave(draft);
+        }}
+      >
+        <Field label="Nombre">
+          <input className={fieldClass} required value={draft.nombre} onChange={(event) => update("nombre", event.target.value)} />
+        </Field>
+        <Field label="Qué es">
+          <textarea className={`${fieldClass} h-24 py-2`} required value={draft.queEs} onChange={(event) => update("queEs", event.target.value)} />
+        </Field>
+        <Field label="Qué manda el costo">
+          <textarea
+            className={`${fieldClass} h-24 py-2`}
+            required
+            value={draft.queMandaElCosto}
+            onChange={(event) => update("queMandaElCosto", event.target.value)}
+          />
+        </Field>
+        <Field label="¿Ya se comercializa?">
+          <select className={fieldClass} value={draft.seComercializa} onChange={(event) => update("seComercializa", event.target.value)}>
+            <option>Sí</option>
+            <option>No</option>
+          </select>
+        </Field>
+        <Field label="Combustible">
+          <input className={fieldClass} value={draft.combustible} onChange={(event) => update("combustible", event.target.value)} />
+        </Field>
+        <div className="mt-2 flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit">Guardar</Button>
+        </div>
+      </form>
+    </ToolDialog>
+  );
 }
 
 export function Studio({ onSignOut }: { onSignOut: () => void }) {
-  const [projects, setProjects] = useState<Project[] | null>(null);
-  const [projectsFailed, setProjectsFailed] = useState(false);
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [selectedCountryId, setSelectedCountryId] = useState<string | null>(null);
+  const [place, setPlace] = useState<{ lat: number; lng: number } | null>(null);
+  const [focusRequest, setFocusRequest] = useState("");
+  const [projectDraft, setProjectDraft] = useState<ProjectDraft | null>(null);
+  const [technologyDraft, setTechnologyDraft] = useState<TechnologyDraft | null>(null);
+  const [openTool, setOpenTool] = useState<"project" | "technology" | null>(null);
 
   useEffect(() => {
     let active = true;
-    getProjects()
-      .then((items) => {
-        if (active) setProjects(items);
+    getCatalog()
+      .then((catalog) => {
+        if (active) setCountries(catalog.paises);
       })
       .catch(() => {
-        if (active) setProjectsFailed(true);
+        if (active) setCountries([]);
       });
     return () => {
       active = false;
     };
   }, []);
 
-  const listStatus = projectListStatus(projects, projectsFailed);
+  const selectedCountry = countries.find((country) => country.id === selectedCountryId) ?? null;
+  const projectCountry = countries.find((country) => country.id === projectDraft?.paisId) ?? null;
+
+  function chooseCountry(country: Country, lat: number, lng: number): void {
+    setSelectedCountryId(country.id);
+    setPlace({ lat, lng });
+  }
+
+  function saveProject(draft: ProjectDraft): void {
+    setProjectDraft(draft);
+    setSelectedCountryId(draft.paisId);
+    setFocusRequest(draft.paisId);
+    setOpenTool(null);
+  }
+
+  function saveTechnology(draft: TechnologyDraft): void {
+    setTechnologyDraft(draft);
+    setOpenTool(null);
+  }
 
   return (
     <div className="flex min-h-dvh flex-col bg-background md:h-dvh md:overflow-hidden">
@@ -179,52 +398,56 @@ export function Studio({ onSignOut }: { onSignOut: () => void }) {
             <Button
               type="button"
               variant="outline"
-              disabled
-              style={{ opacity: 1 }}
               className="h-12 w-full border-foreground/20 bg-white text-base font-medium text-foreground shadow-sm"
+              onClick={() => setOpenTool("project")}
             >
               + Proyecto
             </Button>
           </div>
-          <div className="min-h-16 flex-1 px-4 pb-4 md:min-h-0">
-            {listStatus === "ready" ? (
-              <ul className="grid gap-2">
-                {(projects ?? []).map((project) => (
-                  <li key={project.id} className="text-sm">
-                    {project.name}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <RequestStatus status={listStatus} />
-            )}
-          </div>
+          <div className="min-h-16 flex-1 md:min-h-0" />
           <SummaryBox
             title="Resumen del proyecto"
             rows={[
-              { label: "Nombre", value: EMPTY },
-              { label: "País", value: EMPTY },
-              { label: "Tecnología", value: EMPTY },
-              { label: "Nivel", value: EMPTY },
-              { label: "CAPEX", value: EMPTY },
+              { label: "Nombre", value: projectDraft?.nombre || EMPTY },
+              { label: "País", value: projectCountry?.nombre ?? EMPTY },
+              { label: "Tecnología", value: projectDraft?.tecnologia || EMPTY },
+              { label: "Nivel", value: projectDraft?.nivel || EMPTY },
+              { label: "CAPEX", value: projectDraft?.capex || EMPTY },
             ]}
           />
         </section>
 
         <main className="order-1 flex min-h-[70vh] flex-col bg-background md:order-2 md:min-h-0">
           <div className="min-h-[280px] flex-1">
-            <CountryGlobe paused />
+            <CountryGlobe
+              countryName={selectedCountry?.nombre ?? "Sin país"}
+              selectedCode={selectedCountry?.code ?? ""}
+              availableCodes={countries.map((country) => country.code)}
+              focusRequest={focusRequest}
+              onSelect={(identity) => {
+                const country = countries.find((item) => item.code === identity.code);
+                if (country) chooseCountry(country, identity.lat, identity.lng);
+              }}
+            />
           </div>
           <SummaryBox
             title="Resumen del país"
             rows={[
-              { label: "País", value: EMPTY },
-              { label: "Capacidad", value: EMPTY },
-              { label: "Demanda", value: EMPTY },
-              { label: "Punta", value: EMPTY },
-              { label: "Matriz", value: EMPTY },
+              { label: "País", value: selectedCountry?.nombre ?? EMPTY },
+              { label: "Capacidad", value: selectedCountry?.red.capacidad ?? EMPTY },
+              { label: "Demanda", value: selectedCountry?.red.demanda ?? EMPTY },
+              { label: "Punta", value: selectedCountry?.red.punta ?? EMPTY },
+              { label: "Matriz", value: selectedCountry?.red.matriz ?? EMPTY },
             ]}
           />
+          {selectedCountry && place ? (
+            <CountrySources
+              key={`${selectedCountry.code}-${place.lat}-${place.lng}`}
+              code={selectedCountry.code}
+              lat={place.lat}
+              lng={place.lng}
+            />
+          ) : null}
         </main>
 
         <section className="order-3 flex min-h-0 flex-col border-t border-border bg-white md:overflow-hidden md:border-t-0 md:border-l">
@@ -233,25 +456,35 @@ export function Studio({ onSignOut }: { onSignOut: () => void }) {
             <Button
               type="button"
               variant="outline"
-              disabled
-              style={{ opacity: 1 }}
               className="h-12 w-full border-foreground/20 bg-white text-base font-medium text-foreground shadow-sm"
+              onClick={() => setOpenTool("technology")}
             >
               + Tecnología
             </Button>
           </div>
-          <div className="min-h-4 md:min-h-0 md:flex-1" />
+          <div className="min-h-16 flex-1 md:min-h-0" />
           <SummaryBox
             title="Resumen de la tecnología"
             rows={[
-              { label: "Tecnología", value: EMPTY },
-              { label: "Qué es", value: EMPTY },
-              { label: "Qué manda el costo", value: EMPTY },
+              { label: "Tecnología", value: technologyDraft?.nombre || EMPTY },
+              { label: "Qué es", value: technologyDraft?.queEs || EMPTY },
+              { label: "Qué manda el costo", value: technologyDraft?.queMandaElCosto || EMPTY },
             ]}
           />
         </section>
       </div>
       <SiteFooter />
+      {openTool === "project" ? (
+        <ProjectDialog
+          countries={countries}
+          initialCountryId={selectedCountryId ?? ""}
+          onClose={() => setOpenTool(null)}
+          onSave={saveProject}
+        />
+      ) : null}
+      {openTool === "technology" ? (
+        <TechnologyDialog onClose={() => setOpenTool(null)} onSave={saveTechnology} />
+      ) : null}
     </div>
   );
 }

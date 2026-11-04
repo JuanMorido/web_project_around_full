@@ -7,6 +7,7 @@ import { auth } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { signinLimiter, signupLimiter } from "./middleware/limiter.js";
 import router from "./routes/index.js";
+import { readColombianGrid } from "./sources/xm.js";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -50,6 +51,25 @@ app.use(express.json());
 
 app.get("/health", (_req, res) => {
   res.status(200).send({ status: "ok" });
+});
+
+app.get("/sources/xm", async (req, res) => {
+  const date = typeof req.query.date === "string" ? req.query.date : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    res.status(400).send({ message: "Fecha inválida" });
+    return;
+  }
+
+  try {
+    const grid = await readColombianGrid(date);
+    if (!grid) {
+      res.status(200).send({ empty: true });
+      return;
+    }
+    res.status(200).send(grid);
+  } catch {
+    res.status(502).send({ message: "No se pudo consultar XM" });
+  }
 });
 
 app.post("/signup", signupLimiter, createUser);

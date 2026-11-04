@@ -30,7 +30,9 @@ const localUser: UserData = {
 
 export default function App(): React.JSX.Element {
   const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState<UserData | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserData | null>(() =>
+    hasLocalSession() ? localUser : null,
+  );
   const [isLoggedIn, setIsLoggedIn] = useState(hasLocalSession);
   const [isCheckingToken, setIsCheckingToken] = useState(
     () => !hasLocalSession() && Boolean(localStorage.getItem('jwt')),
@@ -39,12 +41,7 @@ export default function App(): React.JSX.Element {
   const [isTooltipSuccess, setIsTooltipSuccess] = useState(false);
 
   useEffect(() => {
-    if (hasLocalSession()) {
-      setCurrentUser(localUser);
-      setIsLoggedIn(true);
-      setIsCheckingToken(false);
-      return;
-    }
+    if (hasLocalSession()) return;
 
     const token = localStorage.getItem('jwt');
 
