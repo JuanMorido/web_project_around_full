@@ -58,6 +58,11 @@ La primera terminal es la API, la que guarda el registro. La segunda es la pági
 
 https://github.com/JuanMorido/web_project_around_full
 
-Página publicada: https://juanmorido.github.io/web_project_around_full/
+## Publicado
 
-La entrega de la Etapa 1 va en la rama `stage-frontend`, con un pull request hacia `main`.
+- Front: https://web-project-around-full-client.vercel.app
+- API: https://web-project-around-full.vercel.app
+
+La página de la etapa 1 sigue en https://juanmorido.github.io/web_project_around_full/
+
+La entrega de la etapa 1 es el pull request de `stage-frontend` hacia `main`. La de la etapa 2 es el de `stage-fullstack` hacia `main`.
