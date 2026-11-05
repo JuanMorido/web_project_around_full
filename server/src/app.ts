@@ -2,7 +2,7 @@ import cors from "cors";
 import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
-import { createUser, login } from "./controllers/users.js";
+import { createUser, login, recoverPassword } from "./controllers/users.js";
 import { auth } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { signinLimiter, signupLimiter } from "./middleware/limiter.js";
@@ -50,6 +50,11 @@ app.use(
 );
 app.use(express.json());
 
+const dbReady = mongoose.connect(MONGODB_URI, { maxPoolSize: 10 });
+app.use((_req, _res, next) => {
+  dbReady.then(() => next()).catch(next);
+});
+
 app.get("/health", (_req, res) => {
   res.status(200).send({ status: "ok" });
 });
@@ -88,6 +93,7 @@ app.get("/sources/pudl", async (_req, res) => {
 
 app.post("/signup", signupLimiter, createUser);
 app.post("/signin", signinLimiter, login);
+app.post("/recover", signinLimiter, recoverPassword);
 
 app.use(auth);
 app.use(router);
@@ -98,14 +104,17 @@ app.use((_req, res) => {
 
 app.use(errorHandler);
 
-mongoose
-  .connect(MONGODB_URI, { maxPoolSize: 10 })
-  .then(() => {
-    console.log("Conectado a MongoDB (aroundb)");
-    app.listen(PORT, () => {
-      console.log(`App listening on port ${PORT}`);
+if (!process.env.VERCEL) {
+  dbReady
+    .then(() => {
+      console.log("Conectado a MongoDB (aroundb)");
+      app.listen(PORT, () => {
+        console.log(`App listening on port ${PORT}`);
+      });
+    })
+    .catch((error: unknown) => {
+      console.error("Error al conectar a MongoDB:", error);
     });
-  })
-  .catch((error: unknown) => {
-    console.error("Error al conectar a MongoDB:", error);
-  });
+}
+
+export default app;

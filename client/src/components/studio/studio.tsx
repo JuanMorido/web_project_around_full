@@ -17,6 +17,7 @@ import {
   updateEnergyProject,
   type EnergyProject,
 } from "@/utils/energyProjects";
+import { NAME_MAX_LENGTH, NAME_MIN_LENGTH, PROJECTS_PAGE_SIZE } from "@/utils/config";
 import { publicUrl } from "@/utils/publicUrl";
 
 const CountryGlobe = dynamic(() => import("./country-globe").then((module) => module.CountryGlobe), {
@@ -38,11 +39,63 @@ function initials(name: string): string {
   return letters || "M";
 }
 
+function NameField({
+  onRename,
+  userName,
+}: {
+  onRename: (name: string) => Promise<void>;
+  userName: string;
+}) {
+  const [name, setName] = useState(userName);
+  const [notice, setNotice] = useState("");
+  const [savingName, setSavingName] = useState(false);
+
+  return (
+    <form
+      className="mt-2 grid gap-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        setNotice("");
+        setSavingName(true);
+        onRename(name.trim())
+          .then(() => setNotice("Nombre guardado."))
+          .catch((reason: unknown) => {
+            setNotice(reason instanceof Error ? reason.message : REQUEST_ERROR);
+          })
+          .finally(() => setSavingName(false));
+      }}
+    >
+      <label className="grid gap-1 text-xs text-muted-foreground">
+        Nombre
+        <input
+          className={fieldClass}
+          maxLength={NAME_MAX_LENGTH}
+          minLength={NAME_MIN_LENGTH}
+          placeholder="Tu nombre"
+          required
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+        />
+      </label>
+      {notice ? (
+        <p className="text-sm" role="status">
+          {notice}
+        </p>
+      ) : null}
+      <Button type="submit" variant="outline" disabled={savingName}>
+        {savingName ? "Guardando…" : "Guardar nombre"}
+      </Button>
+    </form>
+  );
+}
+
 function SessionMenu({
+  onRename,
   onSignOut,
   userName,
   userEmail,
 }: {
+  onRename: (name: string) => Promise<void>;
   onSignOut: () => void;
   userName: string;
   userEmail: string;
@@ -97,16 +150,9 @@ function SessionMenu({
 
           <section className="mt-4">
             <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Perfil</h2>
-            <dl className="mt-2 grid gap-2">
-              <div>
-                <dt className="text-xs text-muted-foreground">Nombre</dt>
-                <dd className="text-sm">{userName || "Usuario"}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">Correo</dt>
-                <dd className="text-sm">{userEmail}</dd>
-              </div>
-            </dl>
+            <NameField onRename={onRename} userName={userName} />
+            <p className="mt-2 text-xs text-muted-foreground">Correo de recuperación</p>
+            <p className="text-sm">{userEmail}</p>
           </section>
 
           <section className="mt-4">
@@ -225,11 +271,13 @@ function ProjectDialog({
   initialCountryId,
   onClose,
   onSave,
+  saving,
 }: {
   countries: Country[];
   initialCountryId: string;
   onClose: () => void;
   onSave: (draft: ProjectDraft) => void;
+  saving: boolean;
 }) {
   const [draft, setDraft] = useState<ProjectDraft>({
     nombre: "",
@@ -256,7 +304,7 @@ function ProjectDialog({
         }}
       >
         <Field label="Nombre">
-          <input className={fieldClass} required value={draft.nombre} onChange={(event) => update("nombre", event.target.value)} />
+          <input className={fieldClass} placeholder="Nombre de la planta" required value={draft.nombre} onChange={(event) => update("nombre", event.target.value)} />
         </Field>
         <Field label="País">
           <select className={fieldClass} required value={draft.paisId} onChange={(event) => update("paisId", event.target.value)}>
@@ -269,7 +317,7 @@ function ProjectDialog({
           </select>
         </Field>
         <Field label="Tecnología">
-          <input className={fieldClass} required value={draft.tecnologia} onChange={(event) => update("tecnologia", event.target.value)} />
+          <input className={fieldClass} placeholder="Solar, gas, agua…" required value={draft.tecnologia} onChange={(event) => update("tecnologia", event.target.value)} />
         </Field>
         <Field label="Estado de la planta">
           <select className={fieldClass} value={draft.estado} onChange={(event) => update("estado", event.target.value)}>
@@ -284,19 +332,21 @@ function ProjectDialog({
           </select>
         </Field>
         <Field label="Demanda">
-          <input className={fieldClass} required value={draft.demanda} onChange={(event) => update("demanda", event.target.value)} />
+          <input className={fieldClass} placeholder="10 MW" required value={draft.demanda} onChange={(event) => update("demanda", event.target.value)} />
         </Field>
         <Field label="CAPEX">
-          <input className={fieldClass} required value={draft.capex} onChange={(event) => update("capex", event.target.value)} />
+          <input className={fieldClass} placeholder="8 millones" required value={draft.capex} onChange={(event) => update("capex", event.target.value)} />
         </Field>
         <Field label="Precio por MWh">
-          <input className={fieldClass} required value={draft.precioMwh} onChange={(event) => update("precioMwh", event.target.value)} />
+          <input className={fieldClass} placeholder="70 USD" required value={draft.precioMwh} onChange={(event) => update("precioMwh", event.target.value)} />
         </Field>
         <div className="mt-2 flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
             Cancelar
           </Button>
-          <Button type="submit">Guardar</Button>
+          <Button type="submit" disabled={saving}>
+            {saving ? "Guardando…" : "Guardar"}
+          </Button>
         </div>
       </form>
     </ToolDialog>
@@ -306,9 +356,11 @@ function ProjectDialog({
 function TechnologyDialog({
   onClose,
   onSave,
+  saving,
 }: {
   onClose: () => void;
   onSave: (draft: TechnologyDraft) => void;
+  saving: boolean;
 }) {
   const [draft, setDraft] = useState<TechnologyDraft>({
     nombre: "",
@@ -332,7 +384,7 @@ function TechnologyDialog({
         }}
       >
         <Field label="Nombre">
-          <input className={fieldClass} required value={draft.nombre} onChange={(event) => update("nombre", event.target.value)} />
+          <input className={fieldClass} placeholder="Nombre de la tecnología" required value={draft.nombre} onChange={(event) => update("nombre", event.target.value)} />
         </Field>
         <Field label="Qué es">
           <textarea className={`${fieldClass} h-24 py-2`} required value={draft.queEs} onChange={(event) => update("queEs", event.target.value)} />
@@ -355,10 +407,12 @@ function TechnologyDialog({
           <input className={fieldClass} value={draft.combustible} onChange={(event) => update("combustible", event.target.value)} />
         </Field>
         <div className="mt-2 flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
             Cancelar
           </Button>
-          <Button type="submit">Guardar</Button>
+          <Button type="submit" disabled={saving}>
+            {saving ? "Guardando…" : "Guardar"}
+          </Button>
         </div>
       </form>
     </ToolDialog>
@@ -366,10 +420,12 @@ function TechnologyDialog({
 }
 
 export function Studio({
+  onRename,
   onSignOut,
   userName,
   userEmail,
 }: {
+  onRename: (name: string) => Promise<void>;
   onSignOut: () => void;
   userName: string;
   userEmail: string;
@@ -384,6 +440,9 @@ export function Studio({
   const [technologyDraft, setTechnologyDraft] = useState<TechnologyDraft | null>(null);
   const [openTool, setOpenTool] = useState<"project" | "technology" | null>(null);
   const [saveError, setSaveError] = useState("");
+  const [saveNotice, setSaveNotice] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PROJECTS_PAGE_SIZE);
 
   useEffect(() => {
     let active = true;
@@ -439,23 +498,31 @@ export function Studio({
 
   function saveProject(draft: ProjectDraft): void {
     setSaveError("");
+    setSaveNotice("");
+    setSaving(true);
     createEnergyProject(draft)
       .then((project) => {
         setProjects((current) => [project, ...current.filter((item) => item._id !== project._id)]);
         setProjectStatus("ready");
         selectProject(project);
+        setSaveNotice("Proyecto guardado.");
         setOpenTool(null);
       })
       .catch(() => {
         setSaveError(REQUEST_ERROR);
-      });
+      })
+      .finally(() => setSaving(false));
   }
 
   function saveTechnology(draft: TechnologyDraft): void {
     setTechnologyDraft(draft);
-    setOpenTool(null);
-    if (!selectedProject) return;
+    if (!selectedProject) {
+      setOpenTool(null);
+      return;
+    }
     setSaveError("");
+    setSaveNotice("");
+    setSaving(true);
     updateEnergyProject(selectedProject._id, {
       tecnologia: draft.nombre,
       queEs: draft.queEs,
@@ -466,15 +533,21 @@ export function Studio({
       .then((project) => {
         setProjects((current) => current.map((item) => (item._id === project._id ? project : item)));
         setSelectedProject(project);
+        setSaveNotice("Tecnología guardada.");
+        setOpenTool(null);
       })
       .catch(() => {
         setSaveError(REQUEST_ERROR);
-      });
+      })
+      .finally(() => setSaving(false));
   }
 
   function removeProject(): void {
-    if (!selectedProject) return;
+    if (!selectedProject || saving) return;
     const id = selectedProject._id;
+    setSaveError("");
+    setSaveNotice("");
+    setSaving(true);
     deleteEnergyProject(id)
       .then(() => {
         const next = projects.filter((item) => item._id !== id);
@@ -482,20 +555,22 @@ export function Studio({
         setProjectStatus(next.length > 0 ? "ready" : "empty");
         setSelectedProject(null);
         setTechnologyDraft(null);
+        setSaveNotice("Proyecto quitado.");
       })
       .catch(() => {
         setSaveError(REQUEST_ERROR);
-      });
+      })
+      .finally(() => setSaving(false));
   }
 
   return (
     <div className="flex min-h-dvh flex-col bg-background md:h-dvh md:overflow-hidden">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-white px-4 sm:px-5">
         <div className="flex items-center gap-2.5">
-          <img src={publicUrl("logo-viabilidad.svg")} alt="" width={32} height={32} className="size-8" />
+          <img src={publicUrl("logo-viabilidad.svg")} alt="Logotipo de Mundínamo" width={32} height={32} className="size-8" />
           <p className="text-sm font-semibold tracking-tight">Mundínamo</p>
         </div>
-        <SessionMenu onSignOut={onSignOut} userEmail={userEmail} userName={userName} />
+        <SessionMenu onRename={onRename} onSignOut={onSignOut} userEmail={userEmail} userName={userName} />
       </header>
 
       <div className="grid grid-cols-1 md:min-h-0 md:flex-1 md:grid-cols-[300px_minmax(0,1fr)_320px]">
@@ -514,7 +589,7 @@ export function Studio({
           <div className="min-h-16 flex-1 overflow-y-auto px-4 md:min-h-0">
             {projectStatus === "ready" ? (
               <ul className="grid gap-1">
-                {projects.map((project) => (
+                {projects.slice(0, visibleCount).map((project) => (
                   <li key={project._id}>
                     <button
                       type="button"
@@ -531,6 +606,21 @@ export function Studio({
             ) : (
               <RequestStatus status={projectStatus} />
             )}
+            {projectStatus === "ready" && visibleCount < projects.length ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-2 w-full"
+                onClick={() => setVisibleCount((count) => count + PROJECTS_PAGE_SIZE)}
+              >
+                Mostrar más
+              </Button>
+            ) : null}
+            {saveNotice ? (
+              <p className="mt-2 text-sm leading-5" role="status">
+                {saveNotice}
+              </p>
+            ) : null}
             {saveError ? (
               <p className="mt-2 text-sm leading-5" role="alert">
                 {saveError}
@@ -549,8 +639,8 @@ export function Studio({
           />
           {selectedProject ? (
             <div className="px-4 pb-4">
-              <Button type="button" variant="outline" className="w-full" onClick={removeProject}>
-                Quitar proyecto
+              <Button type="button" variant="outline" className="w-full" disabled={saving} onClick={removeProject}>
+                {saving ? "Guardando…" : "Quitar proyecto"}
               </Button>
             </div>
           ) : null}
@@ -619,10 +709,11 @@ export function Studio({
           initialCountryId={selectedCountryId ?? ""}
           onClose={() => setOpenTool(null)}
           onSave={saveProject}
+          saving={saving}
         />
       ) : null}
       {openTool === "technology" ? (
-        <TechnologyDialog onClose={() => setOpenTool(null)} onSave={saveTechnology} />
+        <TechnologyDialog onClose={() => setOpenTool(null)} onSave={saveTechnology} saving={saving} />
       ) : null}
     </div>
   );

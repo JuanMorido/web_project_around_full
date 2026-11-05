@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 type LoginProps = {
-  onLogin: (username: string, password: string) => void;
+  onLogin: (username: string, password: string) => Promise<void>;
   notice?: string | null;
 };
 
@@ -15,10 +15,18 @@ export default function Login({
 }: LoginProps): React.JSX.Element {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    onLogin(username, password);
+    setError(null);
+    setPending(true);
+    onLogin(username, password)
+      .catch((reason: unknown) => {
+        setError(reason instanceof Error ? reason.message : 'Uy, algo salió mal. Por favor, inténtalo de nuevo.');
+      })
+      .finally(() => setPending(false));
   }
 
   return (
@@ -28,20 +36,16 @@ export default function Login({
       name="login-form"
       onSubmit={handleSubmit}
     >
-      {notice ? (
-        <p className="rounded-lg border border-border bg-muted px-3 py-2 text-sm">
-          {notice}
-        </p>
-      ) : null}
       <label className="grid gap-1.5 text-sm font-medium">
-        Correo electrónico
+        Usuario
         <input
-          autoComplete="off"
+          autoComplete="username"
           className={fieldClass}
-          id="login-email"
-          name="email"
+          id="login-username"
+          name="username"
+          placeholder="Usuario"
           required
-          type="email"
+          type="text"
           value={username}
           onChange={(event) => setUsername(event.target.value)}
         />
@@ -51,7 +55,6 @@ export default function Login({
         <input
           className={fieldClass}
           id="login-password"
-          minLength={8}
           name="password"
           placeholder="Contraseña"
           required
@@ -60,12 +63,26 @@ export default function Login({
           onChange={(event) => setPassword(event.target.value)}
         />
       </label>
+      {error || notice ? (
+        <p className="rounded-lg border border-border bg-muted px-3 py-2 text-sm" role="alert">
+          {error ?? notice}
+        </p>
+      ) : null}
       <button
+        disabled={pending}
         className="h-10 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/80"
         type="submit"
       >
-        Inicia sesión
+        {pending ? 'Entrando…' : 'Inicia sesión'}
       </button>
+      <p className="text-center text-sm text-muted-foreground">
+        <Link
+          className="font-medium text-foreground underline-offset-4 hover:underline"
+          to="/recuperar"
+        >
+          ¿Olvidaste la contraseña?
+        </Link>
+      </p>
       <p className="text-center text-sm text-muted-foreground">
         ¿Aún no eres miembro?{' '}
         <Link

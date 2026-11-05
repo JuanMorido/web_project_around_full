@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute/ProtectedRoute';
 import api from '../utils/api';
-import { authorize, register } from '../utils/auth';
+import { authorize, recover, register } from '../utils/auth';
 import CurrentUserContext from '../contexts/CurrentUserContext';
 import type { UserData } from '../interfaces/UserData';
 import { publicUrl } from '../utils/publicUrl';
@@ -10,6 +10,7 @@ import { publicUrl } from '../utils/publicUrl';
 const ProgramPage = lazy(() => import('../pages/ProgramPage'));
 const SignInPage = lazy(() => import('../pages/SignInPage'));
 const SignUpPage = lazy(() => import('../pages/SignUpPage'));
+const RecoverPage = lazy(() => import('../pages/RecoverPage'));
 const AboutPage = lazy(() => import('../pages/AboutPage'));
 
 export default function App(): React.JSX.Element {
@@ -19,8 +20,6 @@ export default function App(): React.JSX.Element {
   const [isCheckingToken, setIsCheckingToken] = useState(() =>
     Boolean(localStorage.getItem('jwt')),
   );
-  const [isTooltipOpen, setIsTooltipOpen] = useState(false);
-  const [isTooltipSuccess, setIsTooltipSuccess] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('jwt');
@@ -45,35 +44,39 @@ export default function App(): React.JSX.Element {
       });
   }, []);
 
-  function handleCloseTooltip(): void {
-    setIsTooltipOpen(false);
+  function handleRegister(
+    username: string,
+    email: string,
+    password: string,
+  ): Promise<void> {
+    return register(username, email, password).then(() => {
+      navigate('/signin', { state: { registered: true } });
+    });
   }
 
-  function handleRegister(email: string, password: string): void {
-    register(email, password)
-      .then(() => {
-        setIsTooltipSuccess(true);
-        setIsTooltipOpen(true);
-        navigate('/signin');
+  function handleRecover(email: string, password: string): Promise<void> {
+    return recover(email, password).then(() => {
+      navigate('/signin', { state: { recovered: true } });
+    });
+  }
+
+  function handleLogin(username: string, password: string): Promise<void> {
+    return authorize(username, password).then((user) => {
+      localStorage.setItem('jwt', user.token);
+      setCurrentUser(user);
+      setIsLoggedIn(true);
+      window.location.assign(publicUrl(''));
+    });
+  }
+
+  function handleRename(name: string): Promise<void> {
+    return api
+      .updateUserInfo({
+        name,
+        about: currentUser?.about || 'Proyectos de energía',
       })
-      .catch((error) => {
-        console.error(error);
-        setIsTooltipSuccess(false);
-        setIsTooltipOpen(true);
-      });
-  }
-
-  function handleLogin(email: string, password: string): void {
-    authorize(email, password)
       .then((user) => {
-        localStorage.setItem('jwt', user.token);
         setCurrentUser(user);
-        setIsLoggedIn(true);
-        window.location.assign(publicUrl(''));
-      })
-      .catch(() => {
-        setIsTooltipSuccess(false);
-        setIsTooltipOpen(true);
       });
   }
 
@@ -84,24 +87,14 @@ export default function App(): React.JSX.Element {
     window.location.assign(publicUrl('signin'));
   }
 
-  const authPageProps = {
-    onSignOut: handleSignOut,
-    isLoggedIn,
-    isCheckingToken,
-    userEmail: currentUser?.email ?? '',
-    isTooltipOpen,
-    isTooltipSuccess,
-    onCloseTooltip: handleCloseTooltip,
-  };
-
   return (
     <CurrentUserContext.Provider
       value={{
         currentUser,
-        handleUpdateUser: async () => {},
-        handleUpdateAvatar: async () => {},
-        handleAddPlaceSubmit: async () => {},
-        handleCardDelete: async () => {},
+        handleUpdateUser: async (data) => {
+          const user = await api.updateUserInfo(data);
+          setCurrentUser(user);
+        },
       }}
     >
       <Routes>
@@ -114,6 +107,7 @@ export default function App(): React.JSX.Element {
             >
               <Suspense fallback={null}>
                 <ProgramPage
+                  onRename={handleRename}
                   onSignOut={handleSignOut}
                   userName={currentUser?.name ?? ''}
                   userEmail={currentUser?.email ?? ''}
@@ -129,7 +123,7 @@ export default function App(): React.JSX.Element {
               <Navigate to='/' replace />
             ) : (
               <Suspense fallback={null}>
-                <SignInPage onLogin={handleLogin} {...authPageProps} />
+                <SignInPage onLogin={handleLogin} />
               </Suspense>
             )
           }
@@ -141,7 +135,19 @@ export default function App(): React.JSX.Element {
               <Navigate to='/' replace />
             ) : (
               <Suspense fallback={null}>
-                <SignUpPage onRegister={handleRegister} {...authPageProps} />
+                <SignUpPage onRegister={handleRegister} />
+              </Suspense>
+            )
+          }
+        />
+        <Route
+          path='/recuperar'
+          element={
+            isCheckingToken ? null : isLoggedIn ? (
+              <Navigate to='/' replace />
+            ) : (
+              <Suspense fallback={null}>
+                <RecoverPage onRecover={handleRecover} />
               </Suspense>
             )
           }

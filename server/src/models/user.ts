@@ -7,6 +7,13 @@ const DEFAULT_AVATAR =
   "https://practicum-content.s3.us-west-1.amazonaws.com/web-lat/avatar.jpg";
 
 const userSchema = new mongoose.Schema({
+  username: {
+    type: String,
+    unique: true,
+    sparse: true,
+    minlength: 2,
+    maxlength: 30,
+  },
   email: {
     type: String,
     required: true,
@@ -20,7 +27,7 @@ const userSchema = new mongoose.Schema({
   name: {
     type: String,
     minlength: 2,
-    maxlength: 40,
+    maxlength: 30,
     default: "Usuario",
   },
   about: {

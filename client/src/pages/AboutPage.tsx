@@ -19,7 +19,7 @@ export default function AboutPage(): React.JSX.Element {
         <div className="flex items-center gap-2.5">
           <img
             src={publicUrl("logo-viabilidad.svg")}
-            alt=""
+            alt="Logotipo de Mundínamo"
             width={32}
             height={32}
             className="size-8"

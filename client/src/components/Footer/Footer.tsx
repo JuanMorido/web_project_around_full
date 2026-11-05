@@ -1,7 +1,0 @@
-export default function Footer(): React.JSX.Element {
-  return (
-    <footer className='footer page__section'>
-      <p className='footer__copyright'>© 2026 Mundínamo</p>
-    </footer>
-  );
-}
