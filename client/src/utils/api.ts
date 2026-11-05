@@ -1,10 +1,4 @@
-import type {
-  ApiConfig,
-  AvatarFormData,
-  ProfileFormData,
-  UserData,
-} from '../interfaces/UserData';
-import type { CardData, CardFormData } from '../interfaces/CardData';
+import type { ApiConfig, ProfileFormData, UserData } from '../interfaces/UserData';
 
 class Api {
   private _baseUrl: string;
@@ -42,46 +36,10 @@ class Api {
     return await this._request<UserData>(`${this._baseUrl}/users/me`);
   }
 
-  async getInitialCards(): Promise<CardData[]> {
-    return await this._request<CardData[]>(`${this._baseUrl}/cards/`);
-  }
-
   async updateUserInfo(data: ProfileFormData): Promise<UserData> {
     return await this._request<UserData>(`${this._baseUrl}/users/me`, {
       method: 'PATCH',
       body: JSON.stringify(data),
-    });
-  }
-
-  async updateAvatar(data: AvatarFormData): Promise<UserData> {
-    return await this._request<UserData>(`${this._baseUrl}/users/me/avatar`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async addCard(data: CardFormData): Promise<CardData> {
-    return await this._request<CardData>(`${this._baseUrl}/cards/`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async deleteCard(id: string): Promise<CardData> {
-    return await this._request<CardData>(`${this._baseUrl}/cards/${id}`, {
-      method: 'DELETE',
-    });
-  }
-
-  async addLike(id: string): Promise<CardData> {
-    return await this._request<CardData>(`${this._baseUrl}/cards/${id}/likes`, {
-      method: 'PUT',
-    });
-  }
-
-  async removeLike(id: string): Promise<CardData> {
-    return await this._request<CardData>(`${this._baseUrl}/cards/${id}/likes`, {
-      method: 'DELETE',
     });
   }
 }

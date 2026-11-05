@@ -26,6 +26,7 @@ async function request<T>(url: string, options: RequestInit): Promise<T> {
 }
 
 export function register(
+  username: string,
   email: string,
   password: string,
 ): Promise<RegisterResponse> {
@@ -34,15 +35,28 @@ export function register(
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ username, email, password }),
   });
 }
 
 export function authorize(
-  email: string,
+  username: string,
   password: string,
 ): Promise<LoginResponse> {
   return request<LoginResponse>(`${API_URL}/signin`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export function recover(
+  email: string,
+  password: string,
+): Promise<{ message: string }> {
+  return request<{ message: string }>(`${API_URL}/recover`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

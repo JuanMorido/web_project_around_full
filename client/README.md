@@ -1,39 +1,22 @@
-# Around The U.S. — React
+# Mundínamo — página
 
-Galería interactiva de tarjetas de lugares, migrada a **React**. El perfil y las tarjetas llegan de la API de TripleTen. Las acciones (like, borrar, editar, crear) actualizan el estado de la aplicación.
+La pantalla del programa. El globo, el clima, la red del país y los proyectos de quien inició sesión.
 
-## Funcionalidad
+## Qué hace
 
-- Carga el usuario y las tarjetas con `Promise.all` al montar `App`
-- Comparte `currentUser` y los handlers de perfil, avatar, nueva tarjeta y borrado con Context
-- `Main` y `Card` se suscriben a `CurrentUserContext`
-- Like de tarjetas y borrado solo de las propias (con confirmación `RemoveCard`)
-- Formulario de perfil controlado (`useState`)
-- Formulario de avatar no controlado (`useRef`)
-- Nueva tarjeta controlada; la tarjeta creada aparece al inicio de la lista
-- Ventana de imagen a tamaño completo
+- Ingreso con usuario y contraseña. El correo solo recupera la clave.
+- La cuenta de revisión entra con `admin` y `0000`.
+- Cada persona ve y guarda solo sus proyectos.
+- Al elegir un país, el clima llega de Open-Meteo. Colombia usa XM y Estados Unidos usa PUDL, a través de la API propia.
 
-## Arquitectura
+## Cómo ejecutarlo
 
-- `src/utils/api.ts` — instancia de `Api` con token y URL base
-- `src/contexts/CurrentUserContext.tsx` — contexto del usuario actual
-- `src/interfaces/` — `UserData`, `CardData`, `CurrentUserContextType`, `ModalData`
-- `App` — cerebro: estado de usuario, tarjetas y popups; llamadas a la API
-- `Main` — perfil dinámico y galería
-- `Main/components/card` — like por props; borrar solo si la tarjeta es propia
-- `Main/components/popup` — `Popup`, `EditProfile`, `EditAvatar`, `NewCard`, `ImagePopup`, `RemoveCard`
-
-## Tecnologías
-
-- React 19 (componentes funcionales, hooks, Context)
-- TypeScript
-- Vite
-- CSS3 con metodología BEM
-
-## Cómo ejecutar
+Desde la raíz del repositorio, con la API ya en marcha:
 
 ```bash
+cp .env.example .env
 npm install
 npm run dev
-npm run build
 ```
+
+La página queda en http://localhost:3000. `VITE_API_URL` apunta a la API.

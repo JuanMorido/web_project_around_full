@@ -11,10 +11,6 @@ export interface ProfileFormData {
   about: string;
 }
 
-export interface AvatarFormData {
-  avatar: string;
-}
-
 export interface ApiConfig {
   baseUrl: string;
   headers: Record<string, string>;
