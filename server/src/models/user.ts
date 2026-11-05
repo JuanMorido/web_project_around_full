@@ -21,13 +21,13 @@ const userSchema = new mongoose.Schema({
     type: String,
     minlength: 2,
     maxlength: 40,
-    default: "Jacques Cousteau",
+    default: "Usuario",
   },
   about: {
     type: String,
     minlength: 2,
     maxlength: 200,
-    default: "Explorador",
+    default: "Proyectos de energía",
   },
   avatar: {
     type: String,

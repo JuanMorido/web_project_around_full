@@ -52,6 +52,23 @@
         "costoDeCapital": "10 %",
         "precioDeReferencia": "65 USD/MWh"
       }
+    },
+    {
+      "id": "us",
+      "nombre": "Estados Unidos",
+      "red": {
+        "capacidad": "—",
+        "demanda": "—",
+        "punta": "—",
+        "matriz": "La cifra del día sale de PUDL"
+      },
+      "normativa": "Cada autoridad de balance opera su zona y reporta demanda, generación e intercambio.",
+      "combustibles": ["Gas", "Nuclear", "Carbón", "Viento", "Sol", "Agua"],
+      "indicadoresEconomicos": {
+        "moneda": "USD",
+        "costoDeCapital": "—",
+        "precioDeReferencia": "—"
+      }
     }
   ],
   "proyectos": []

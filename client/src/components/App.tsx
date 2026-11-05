@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute/ProtectedRoute';
 import api from '../utils/api';
-import { register } from '../utils/auth';
+import { authorize, register } from '../utils/auth';
 import CurrentUserContext from '../contexts/CurrentUserContext';
 import type { UserData } from '../interfaces/UserData';
 import { publicUrl } from '../utils/publicUrl';
@@ -12,37 +12,17 @@ const SignInPage = lazy(() => import('../pages/SignInPage'));
 const SignUpPage = lazy(() => import('../pages/SignUpPage'));
 const AboutPage = lazy(() => import('../pages/AboutPage'));
 
-const LOCAL_SESSION_KEY = 'viabilidad-session';
-const LOCAL_USERNAME = 'admin';
-const LOCAL_PASSWORD = '0000';
-
-function hasLocalSession(): boolean {
-  return localStorage.getItem(LOCAL_SESSION_KEY) === LOCAL_USERNAME;
-}
-
-const localUser: UserData = {
-  _id: 'local-admin',
-  email: LOCAL_USERNAME,
-  name: LOCAL_USERNAME,
-  about: '',
-  avatar: '',
-};
-
 export default function App(): React.JSX.Element {
   const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState<UserData | null>(() =>
-    hasLocalSession() ? localUser : null,
-  );
-  const [isLoggedIn, setIsLoggedIn] = useState(hasLocalSession);
-  const [isCheckingToken, setIsCheckingToken] = useState(
-    () => !hasLocalSession() && Boolean(localStorage.getItem('jwt')),
+  const [currentUser, setCurrentUser] = useState<UserData | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isCheckingToken, setIsCheckingToken] = useState(() =>
+    Boolean(localStorage.getItem('jwt')),
   );
   const [isTooltipOpen, setIsTooltipOpen] = useState(false);
   const [isTooltipSuccess, setIsTooltipSuccess] = useState(false);
 
   useEffect(() => {
-    if (hasLocalSession()) return;
-
     const token = localStorage.getItem('jwt');
 
     if (!token) {
@@ -83,20 +63,22 @@ export default function App(): React.JSX.Element {
       });
   }
 
-  function handleLogin(username: string, password: string): void {
-    if (username.trim() === LOCAL_USERNAME && password === LOCAL_PASSWORD) {
-      localStorage.setItem(LOCAL_SESSION_KEY, LOCAL_USERNAME);
-      window.location.assign(publicUrl(''));
-      return;
-    }
-
-    setIsTooltipSuccess(false);
-    setIsTooltipOpen(true);
+  function handleLogin(email: string, password: string): void {
+    authorize(email, password)
+      .then((user) => {
+        localStorage.setItem('jwt', user.token);
+        setCurrentUser(user);
+        setIsLoggedIn(true);
+        window.location.assign(publicUrl(''));
+      })
+      .catch(() => {
+        setIsTooltipSuccess(false);
+        setIsTooltipOpen(true);
+      });
   }
 
   function handleSignOut(): void {
     localStorage.removeItem('jwt');
-    localStorage.removeItem(LOCAL_SESSION_KEY);
     setIsLoggedIn(false);
     setCurrentUser(null);
     window.location.assign(publicUrl('signin'));
@@ -131,7 +113,11 @@ export default function App(): React.JSX.Element {
               isCheckingToken={isCheckingToken}
             >
               <Suspense fallback={null}>
-                <ProgramPage onSignOut={handleSignOut} />
+                <ProgramPage
+                  onSignOut={handleSignOut}
+                  userName={currentUser?.name ?? ''}
+                  userEmail={currentUser?.email ?? ''}
+                />
               </Suspense>
             </ProtectedRoute>
           }

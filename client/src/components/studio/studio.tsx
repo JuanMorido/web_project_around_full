@@ -6,8 +6,17 @@ import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "cn";
 import CountrySources from "@/components/studio/country-sources";
+import RequestStatus from "@/components/status/RequestStatus";
 import SiteFooter from "@/components/site/SiteFooter";
 import { getCatalog, type Country } from "@/utils/projectsApi";
+import { REQUEST_ERROR } from "@/utils/messages";
+import {
+  createEnergyProject,
+  deleteEnergyProject,
+  getEnergyProjects,
+  updateEnergyProject,
+  type EnergyProject,
+} from "@/utils/energyProjects";
 import { publicUrl } from "@/utils/publicUrl";
 
 const CountryGlobe = dynamic(() => import("./country-globe").then((module) => module.CountryGlobe), {
@@ -19,7 +28,25 @@ const CountryGlobe = dynamic(() => import("./country-globe").then((module) => mo
   ),
 });
 
-function SessionMenu({ onSignOut }: { onSignOut: () => void }) {
+function initials(name: string): string {
+  const letters = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+  return letters || "M";
+}
+
+function SessionMenu({
+  onSignOut,
+  userName,
+  userEmail,
+}: {
+  onSignOut: () => void;
+  userName: string;
+  userEmail: string;
+}) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -49,35 +76,35 @@ function SessionMenu({ onSignOut }: { onSignOut: () => void }) {
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
       >
-        <span
+          <span
           className="grid size-8 place-items-center rounded-full bg-primary text-xs font-medium text-primary-foreground"
           aria-hidden
         >
-          JC
+          {initials(userName)}
         </span>
-        <span className="text-sm">Juan Camilo</span>
+        <span className="text-sm">{userName || "Cuenta"}</span>
         <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
       {open ? (
         <div
           id={panelId}
           role="region"
-          aria-label="Sesión de Juan Camilo"
+          aria-label={`Sesión de ${userName || "la cuenta"}`}
           className="absolute top-12 right-0 z-30 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-border bg-white p-4 shadow-lg"
         >
-          <p className="text-xs text-muted-foreground">Sesión local</p>
-          <p className="text-sm font-semibold">Juan Camilo Escobar</p>
+          <p className="text-xs text-muted-foreground">Cuenta</p>
+          <p className="text-sm font-semibold">{userName || "Usuario"}</p>
 
           <section className="mt-4">
             <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Perfil</h2>
             <dl className="mt-2 grid gap-2">
               <div>
                 <dt className="text-xs text-muted-foreground">Nombre</dt>
-                <dd className="text-sm">Juan Camilo Escobar</dd>
+                <dd className="text-sm">{userName || "Usuario"}</dd>
               </div>
               <div>
-                <dt className="text-xs text-muted-foreground">Dónde vive la sesión</dt>
-                <dd className="text-sm">En este equipo. No hay una cuenta en un servidor.</dd>
+                <dt className="text-xs text-muted-foreground">Correo</dt>
+                <dd className="text-sm">{userEmail}</dd>
               </div>
             </dl>
           </section>
@@ -338,14 +365,25 @@ function TechnologyDialog({
   );
 }
 
-export function Studio({ onSignOut }: { onSignOut: () => void }) {
+export function Studio({
+  onSignOut,
+  userName,
+  userEmail,
+}: {
+  onSignOut: () => void;
+  userName: string;
+  userEmail: string;
+}) {
   const [countries, setCountries] = useState<Country[]>([]);
   const [selectedCountryId, setSelectedCountryId] = useState<string | null>(null);
   const [place, setPlace] = useState<{ lat: number; lng: number } | null>(null);
   const [focusRequest, setFocusRequest] = useState("");
-  const [projectDraft, setProjectDraft] = useState<ProjectDraft | null>(null);
+  const [projects, setProjects] = useState<EnergyProject[]>([]);
+  const [projectStatus, setProjectStatus] = useState<"loading" | "error" | "empty" | "ready">("loading");
+  const [selectedProject, setSelectedProject] = useState<EnergyProject | null>(null);
   const [technologyDraft, setTechnologyDraft] = useState<TechnologyDraft | null>(null);
   const [openTool, setOpenTool] = useState<"project" | "technology" | null>(null);
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -361,24 +399,93 @@ export function Studio({ onSignOut }: { onSignOut: () => void }) {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    getEnergyProjects()
+      .then((items) => {
+        if (!active) return;
+        setProjects(items);
+        setProjectStatus(items.length > 0 ? "ready" : "empty");
+      })
+      .catch(() => {
+        if (active) setProjectStatus("error");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const selectedCountry = countries.find((country) => country.id === selectedCountryId) ?? null;
-  const projectCountry = countries.find((country) => country.id === projectDraft?.paisId) ?? null;
+  const projectCountry = countries.find((country) => country.id === selectedProject?.paisId) ?? null;
 
   function chooseCountry(country: Country, lat: number, lng: number): void {
     setSelectedCountryId(country.id);
     setPlace({ lat, lng });
   }
 
+  function selectProject(project: EnergyProject): void {
+    setSelectedProject(project);
+    setTechnologyDraft({
+      nombre: project.tecnologia,
+      queEs: project.queEs,
+      queMandaElCosto: project.queMandaElCosto,
+      seComercializa: project.seComercializa || "Sí",
+      combustible: project.combustible,
+    });
+    setSelectedCountryId(project.paisId);
+    setFocusRequest(`${project.paisId}-${project._id}`);
+    setPlace(null);
+  }
+
   function saveProject(draft: ProjectDraft): void {
-    setProjectDraft(draft);
-    setSelectedCountryId(draft.paisId);
-    setFocusRequest(draft.paisId);
-    setOpenTool(null);
+    setSaveError("");
+    createEnergyProject(draft)
+      .then((project) => {
+        setProjects((current) => [project, ...current.filter((item) => item._id !== project._id)]);
+        setProjectStatus("ready");
+        selectProject(project);
+        setOpenTool(null);
+      })
+      .catch(() => {
+        setSaveError(REQUEST_ERROR);
+      });
   }
 
   function saveTechnology(draft: TechnologyDraft): void {
     setTechnologyDraft(draft);
     setOpenTool(null);
+    if (!selectedProject) return;
+    setSaveError("");
+    updateEnergyProject(selectedProject._id, {
+      tecnologia: draft.nombre,
+      queEs: draft.queEs,
+      queMandaElCosto: draft.queMandaElCosto,
+      seComercializa: draft.seComercializa,
+      combustible: draft.combustible,
+    })
+      .then((project) => {
+        setProjects((current) => current.map((item) => (item._id === project._id ? project : item)));
+        setSelectedProject(project);
+      })
+      .catch(() => {
+        setSaveError(REQUEST_ERROR);
+      });
+  }
+
+  function removeProject(): void {
+    if (!selectedProject) return;
+    const id = selectedProject._id;
+    deleteEnergyProject(id)
+      .then(() => {
+        const next = projects.filter((item) => item._id !== id);
+        setProjects(next);
+        setProjectStatus(next.length > 0 ? "ready" : "empty");
+        setSelectedProject(null);
+        setTechnologyDraft(null);
+      })
+      .catch(() => {
+        setSaveError(REQUEST_ERROR);
+      });
   }
 
   return (
@@ -388,7 +495,7 @@ export function Studio({ onSignOut }: { onSignOut: () => void }) {
           <img src={publicUrl("logo-viabilidad.svg")} alt="" width={32} height={32} className="size-8" />
           <p className="text-sm font-semibold tracking-tight">Mundínamo</p>
         </div>
-        <SessionMenu onSignOut={onSignOut} />
+        <SessionMenu onSignOut={onSignOut} userEmail={userEmail} userName={userName} />
       </header>
 
       <div className="grid grid-cols-1 md:min-h-0 md:flex-1 md:grid-cols-[300px_minmax(0,1fr)_320px]">
@@ -404,17 +511,49 @@ export function Studio({ onSignOut }: { onSignOut: () => void }) {
               + Proyecto
             </Button>
           </div>
-          <div className="min-h-16 flex-1 md:min-h-0" />
+          <div className="min-h-16 flex-1 overflow-y-auto px-4 md:min-h-0">
+            {projectStatus === "ready" ? (
+              <ul className="grid gap-1">
+                {projects.map((project) => (
+                  <li key={project._id}>
+                    <button
+                      type="button"
+                      className={`w-full rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted ${
+                        selectedProject?._id === project._id ? "bg-muted font-medium" : ""
+                      }`}
+                      onClick={() => selectProject(project)}
+                    >
+                      {project.nombre}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <RequestStatus status={projectStatus} />
+            )}
+            {saveError ? (
+              <p className="mt-2 text-sm leading-5" role="alert">
+                {saveError}
+              </p>
+            ) : null}
+          </div>
           <SummaryBox
             title="Resumen del proyecto"
             rows={[
-              { label: "Nombre", value: projectDraft?.nombre || EMPTY },
+              { label: "Nombre", value: selectedProject?.nombre || EMPTY },
               { label: "País", value: projectCountry?.nombre ?? EMPTY },
-              { label: "Tecnología", value: projectDraft?.tecnologia || EMPTY },
-              { label: "Nivel", value: projectDraft?.nivel || EMPTY },
-              { label: "CAPEX", value: projectDraft?.capex || EMPTY },
+              { label: "Tecnología", value: selectedProject?.tecnologia || EMPTY },
+              { label: "Nivel", value: selectedProject?.nivel || EMPTY },
+              { label: "CAPEX", value: selectedProject?.capex || EMPTY },
             ]}
           />
+          {selectedProject ? (
+            <div className="px-4 pb-4">
+              <Button type="button" variant="outline" className="w-full" onClick={removeProject}>
+                Quitar proyecto
+              </Button>
+            </div>
+          ) : null}
         </section>
 
         <main className="order-1 flex min-h-[70vh] flex-col bg-background md:order-2 md:min-h-0">

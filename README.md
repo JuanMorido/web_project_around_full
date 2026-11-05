@@ -14,7 +14,7 @@ Una tecnología en un lugar es un proyecto. Usted puede crear varios. Con la mis
 
 Mundínamo quiere ampliar el acceso de cualquier persona al mundo de la energía. Está hecha para que usted explore sus ideas con orden y encuentre una salida en un mercado difícil, pero con una demanda alta.
 
-Al elegir un país en el globo, el clima de 2024 llega de Open-Meteo. Si el país es Colombia, la demanda, la generación y el precio de bolsa del día llegan de XM.
+Al elegir un país en el globo, el clima de 2024 llega de Open-Meteo. Si el país es Colombia, la demanda, la generación y el precio de bolsa del día llegan de XM. Si el país es Estados Unidos, la demanda, la generación neta y el intercambio llegan de PUDL (Catalyst Cooperative, https://data.catalyst.coop), leídos en Parquet desde `s3://pudl.catalyst.coop/nightly/` con DuckDB, filtrando columnas y un día antes de cargarlos.
 
 El mismo texto está en la página [Sobre Mundínamo](https://juanmorido.github.io/web_project_around_full/sobre).
 
@@ -27,7 +27,7 @@ El mismo texto está en la página [Sobre Mundínamo](https://juanmorido.github.
 
 - React 19, TypeScript, Vite y React Router
 - Express 5, MongoDB, Mongoose, bcrypt y JWT
-- Open-Meteo (clima) y XM (red eléctrica de Colombia)
+- Open-Meteo (clima), XM (red eléctrica de Colombia) y PUDL (red eléctrica de Estados Unidos)
 
 ## Cómo ejecutarlo
 

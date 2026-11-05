@@ -34,14 +34,14 @@ export default function Login({
         </p>
       ) : null}
       <label className="grid gap-1.5 text-sm font-medium">
-        Usuario
+        Correo electrónico
         <input
           autoComplete="off"
           className={fieldClass}
-          id="login-username"
-          name="login-user"
+          id="login-email"
+          name="email"
           required
-          type="text"
+          type="email"
           value={username}
           onChange={(event) => setUsername(event.target.value)}
         />
@@ -51,6 +51,7 @@ export default function Login({
         <input
           className={fieldClass}
           id="login-password"
+          minLength={8}
           name="password"
           placeholder="Contraseña"
           required
